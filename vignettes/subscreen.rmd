@@ -1,0 +1,49 @@
+---
+title: "subscreen Package Manual"
+author: "Bodo Kirsch, Steffen Jeske, Susanne Lippert, Thomas Schmelter, Christoph Muysers, Hermann Kulmann"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{subscreen Package Manual}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+subscreen (Subgroup Screening) has been developed to sysematically analyze data, e.g., from clinical trial, for subgroup effects and visualize the outcome for all evaluated subgroups simultanously.
+The visualization is done by a shiny application. Typically Shiny applications are hosted on a dedicated shiny server, but due to the sensitivity of patient data in clinical trials, which are usually protected by informed consents, the upload of this data to an external server is prohibited. Therefore we provide our tool as a stand-alone application that can be launched from any local machine on which the data is stored. 
+
+# Description
+
+Identifying outcome relevant subgroups has now become as simple as possible! The formerly lengthy and tedious search for the needle in a haystack will be replaced by a single, comprehensive and coherent presentation.
+
+The central result of a subgroup screening is a diagram in which each single dot stands for a subgroup. The diagram may show thousands of them. The position of the dot in the diagram is determined by the sample size of the subgroup and the statistical measure of the treatment effect in that subgroup. The sample size is shown on the horizontal axis while the treatment effect is displayed on the vertical axis. Furthermore, the diagram shows the line of no effect and the overall study results. For small subgroups, which are found on the left side of the plot, larger random deviations from the mean study effect are expected, while for larger subgroups only small deviations from the study mean can be expected to be chance findings.
+So for a study with no conspicuous subgroup effects, the dots in the figure are expected to form a kind of funnel. Any deviations from this funnel shape hint to conspicuous subgroups.
+
+# Functionality
+
+Every subgroup is represented by a single dot in the plot.  Subgroups may be defined by a single factor (e.g. sex=female) or by a combination  of different factors (e.g. agegroup=young AND smoker=no AND right-handed=yes). Which level of detail with regard to subgroup factors should be displayed  can be chosen using the slider input on the left.
+The drop-down combo boxes allow for switching between different endpoint (y-axis),  changing the reference variable (x-axis, in general the number of subjects/observations), or selecting a specific subgroub factor and a corresponding value to be highlighted in the plot. The one-level subgroup will be the most right dot.
+Also all combination will be highlighted. Combinations will be shown left from this dot. The plot type can be switched between linear (standard) and logarithmic. The range of the y-axis to be displayed can be reduced to zoom in.
+ 
+Clicking on a dot will lead to a table display at the bottom listing all subgroups in that area (tab "Selected Subgroups"). In a second tab ("Filtered Subgroups") subgroups chosen by the drop-down combo box will be listed.
+ 
+# Input Data (for subsreencalc)
+
+The input data frame should have one row per subject/patient/observation.
+As columns the following are required
+  1. variable(s) needed to derive the endpoint/outcome/target variable(s) 
+  2. treatment/group/reference variable (only if comparison will be performed)
+  3. subgroup factors, i.e. categorized baseline/demographic variables
+ 
+The input function eval-funtion() needs to be defined by the user.
+This function will calculate the endpoint(s) for each subgroup, 
+e.g. number, rate, mean, odds ratio, hazard ratio, confidence limit, p-value, ...
+The results will be returned as a numerical vector. Each element of the vector represents 
+an endpoint (outcome/treatment effect/result).
+ 
+
+The output object of subsreencalc will be the input for subscreenshow.
+
+# Things to consider
+
+There should be no "NA" values in the input data set. If there are values "NA" consider replacing them by "No data" or a certain value. The eval-function() should include exception handling for functions that require  a certain input to assure a valid return value (NA is also valid). For example the coxph() function should only be executed if there is at least one observation in each treatment arm (see example). This can be achieved by using trycatch() or a condition. Otherwise the program will abort with error. 
