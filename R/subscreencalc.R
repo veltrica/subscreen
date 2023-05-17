@@ -346,39 +346,48 @@ subscreencalc <- function(
   }
 
 
-  ##### funnel
-  if(calc_funnel == TRUE){
-    start.time = Sys.time() # Für testen: Zeit festhalten
-    # bootstrap function (generiert Stichproben und gibt für Stichprobe )
-    myboot <- function(sampsize, data, eval_function){
-      num <- function(value) value + as.numeric(eval_function(sample_n(data, sampsize, replace = FALSE)))
-      numv <- Vectorize(num)
 
-      bootsamp <- numv(vector(length = nperm))
-      quantile(bootsamp, probs = c(alpha/2, 1-(alpha/2)), na.rm = TRUE)
-    }
-
-    # generation of support point vector
-    min <- min(fc$N.of.subjects)
-    if(min < min_start) min <- min_start
-    max <- max(fc$N.of.subjects)
-
-    sqrtvec = seq(sqrt(min), by = (sqrt(max) - sqrt(min))/n_support_points, length.out = (n_support_points+1))
-    nsamp <- matrix(round(sqrtvec^2), nrow = 1)
-
-    # apply bootstrap to all sample sizes
-    myCI <- apply(nsamp, MARGIN = 2, FUN = myboot, data = data, eval_function = eval_function)
-
-    point_estimates <- list(intervals = myCI, nsamp = nsamp)
-    time.taken = Sys.time() - start.time
-    print(time.taken)
-  }
 
   H <- list(sge = fc, max_comb = max_comb, min_comb = min_comb,
             subjectid = subjectid, endpoints = endpoints, treat = treat,
             factors = factors, results_total = res)#, endpoint_params = endpoint_params)
 
+  ##### funnel
+  if(calc_funnel == TRUE){
+    start.time = Sys.time() #  Zeit festhalten
 
+    min <- min(H$sge$N.of.subjects)
+    max <- max(H$sge$N.of.subjects)
+    sampsize <- max
+
+
+    # Generate vector of support points between min and max sample sizes
+    sqrtvec = seq(sqrt(min), by = (sqrt(max) - sqrt(min))/n_support_points, length.out = (n_support_points+1))
+    nsamp <- matrix(round(sqrtvec^2), nrow = 1)
+
+
+    # First we only remove covariates, since they are not of interest,
+    data_trimmed <- data[,c(treat, endpoints)]
+    # Then create large matrix containing nperm of the largest possible sample
+    all_samples <- replicate(nperm, sample_n(data_trimmed, sampsize, replace = FALSE))
+
+    # Function SliceR: takes as input a smaller number m <= nrow(df), all_samples matrix and calculates evaluation function for this smaller value
+    # Sample
+    SliceR <- function(dat,m) {
+      to_be_sliced <- data.frame(treat = dat[treat], endpoint = dat[endpoints])
+      eval_function(to_be_sliced[1:m,])
+    }
+
+    # QuantileR: gets as input the desired slice (size of support point) and outputs the quantiles of SliceR values
+
+    QuantileR <- function(m) quantile(unlist(apply(all_samples,2, SliceR, m = m)), probs = c(alpha/2, 1-(alpha/2)), na.rm = TRUE)
+    quantiles <- apply(nsamp, 2, QuantileR)
+
+    point_estimates <- list(intervals = quantiles, nsamp = nsamp)
+
+    time.taken = Sys.time() - start.time
+    print(time.taken)
+  }
   # add to object if bootstrap is calculated
   if(calc_funnel == TRUE){
 
