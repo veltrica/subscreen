@@ -133,7 +133,8 @@ subscreencalc <- function(
   min_start = 2,     # Minimale Subgruppengröße, für die Konfidenzintervalle berechnet werden sollen
   n_support_points = 50,  # Anzahl der Subgruppengrößen, für die Konfidenzintervalle berechnet werden
   nperm = 1000,           # Anzahl Permutationen pro Stuetzpunkt
-  alpha = c(0.01,0.05,0.1)
+  alpha = c(0.01,0.05,0.1),
+  stratified = TRUE
   ){
 
   #### WARNING & ERROR MESSAGES ####
@@ -368,8 +369,29 @@ subscreencalc <- function(
 
     # First we only remove covariates, since they are not of interest,
     data_trimmed <- data[,c(treat, endpoints)]
+
+    # Weighted Sampler: creates samples such that each sample has 50% of each treatment level (T = 0,1,0,1,0,...)
+
+    weightedSampler <- function(dat, treat = 'T', size = 10){
+      trts <- unique(dat[,treat])
+      trtlevels <- as.numeric(length(unique(dat[,treat])))
+      sizePerTrt <- round(size/trtlevels)
+      trt1 <- slice_sample(dat[dat[,treat]== unique(dat[,treat])[1],] ,n =sizePerTrt)
+      trt2 <- slice_sample(dat[dat[,treat]== unique(dat[,treat])[2],] ,n =sizePerTrt)
+
+      samp <- data.frame(matrix(ncol = ncol(dat), nrow = size))
+      colnames(samp) <- colnames(dat)
+      samp[2*(1:sizePerTrt),] <- trt1
+      samp[(2*(1:sizePerTrt)-1),] <- trt2
+      samp
+
+    }
+
     # Then create large matrix containing nperm of the largest possible sample
-    all_samples <- replicate(nperm, sample_n(data_trimmed, sampsize, replace = FALSE))
+
+    if(stratified) all_samples <- replicate(nperm, weightedSampler(data_trimmed, treat, sampsize))
+    if(!stratified) all_samples <- replicate(nperm, slice_sample(data_trimmed, n = sampsize))
+
 
     # Function SliceR: takes as input a smaller number m <= nrow(df), all_samples matrix and calculates evaluation function for this smaller value
     # Sample
