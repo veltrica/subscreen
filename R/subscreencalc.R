@@ -376,8 +376,12 @@ subscreencalc <- function(
       trts <- unique(dat[,treat])
       trtlevels <- as.numeric(length(unique(dat[,treat])))
       sizePerTrt <- round(size/trtlevels)
-      trt1 <- slice_sample(dat[dat[,treat]== unique(dat[,treat])[1],] ,n =sizePerTrt)
-      trt2 <- slice_sample(dat[dat[,treat]== unique(dat[,treat])[2],] ,n =sizePerTrt)
+
+      trtlvl1 <- as.numeric(unlist(unique(dat[,treat]))[1])
+      trtlvl2 <- as.numeric(unlist(unique(dat[,treat]))[2])
+
+      trt1 <- slice_sample(dat[dat[,treat]== trtlvl1,] ,n =sizePerTrt)
+      trt2 <- slice_sample(dat[dat[,treat]== trtlvl2,] ,n =sizePerTrt)
 
       samp <- data.frame(matrix(ncol = ncol(dat), nrow = size))
       colnames(samp) <- colnames(dat)
@@ -388,8 +392,9 @@ subscreencalc <- function(
     }
 
     # Then create large matrix containing nperm of the largest possible sample
-
-    if(stratified) all_samples <- replicate(nperm, weightedSampler(data_trimmed, treat, sampsize))
+    if(stratified) sampsize <- ifelse(sampsize>min(nrow(dat[dat[,treat]== trtlvl1,]), nrow(dat[dat[,treat]== trtlvl2,])), min(nrow(dat[dat[,treat]== trtlvl1,]), nrow(dat[dat[,treat]== trtlvl2,])),
+                                      sampsize) # ensure that max. sampsize does not exceed min. required sampsize for each trt level
+    if(stratified) all_samples <- replicate(nperm, weightedSampler(data_trimmed, treat, (sampsize)))
     if(!stratified) all_samples <- replicate(nperm, slice_sample(data_trimmed, n = sampsize))
 
 
